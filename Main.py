@@ -14,6 +14,10 @@ global player
 
 
 def readDirectory():
+    '''
+        Method reads directory on lexar flash drive that contains book files. Creates list of book titles,
+        and number of files per title. (each book is saved as multiple files)
+    '''
     dirList = sorted(os.listdir('/media/pi/Lexar/'))
     bookList = []
     fileCount = []
@@ -41,6 +45,10 @@ def readDirectory():
 
 
 def createMetaFile(bookList,fileCount):
+    """
+        Method creates meta file. Meta file stores information on which book is currently playing, 
+        and the current file number and progress for each book.
+    """
     currentBook = 0
     try:        # code for if meta file already exists
         f = open('meta.txt','r')
@@ -72,6 +80,9 @@ def createMetaFile(bookList,fileCount):
         
 
 def updateMetaFile(currentBookTitle,fractional,buttonFn):
+    """
+        Method updates meta file each time fast forward, rwd, or poweroff button is pressed. 
+    """
     f = open('meta.txt','r')
     metaContents = f.readlines()
     f.close()
@@ -99,6 +110,9 @@ def updateMetaFile(currentBookTitle,fractional,buttonFn):
     f.close()
 
 def initializeGPIO():
+    """
+        Initializes Raspberry Pi's GPIO board.
+    """
     GPIO.setmode(GPIO.BOARD)
     GPIO.setup(36,GPIO.IN,pull_up_down=GPIO.PUD_DOWN) # play/pause button
     GPIO.setup(22,GPIO.IN,pull_up_down=GPIO.PUD_DOWN) # sort down to next book
@@ -110,6 +124,9 @@ def initializeGPIO():
 
 
 def chapterSanitize(chapter):
+    '''
+        Removes 0 from chapter strings less than 10. Ex chapter 01 becomes chapter 1, 02 -> 2, etc.
+    '''
     if int(chapter) < 10:
         outChapter = '0' + str(chapter)
     else:
@@ -117,6 +134,9 @@ def chapterSanitize(chapter):
     return outChapter
 
 def readMP3(currentBookTitle,typeVar):
+    '''
+        Reads selected book out loud.
+    '''
     f = open('meta.txt','r')
     metaContents = f.readlines()
     f.close()
@@ -146,10 +166,18 @@ def readMP3(currentBookTitle,typeVar):
     playing = True
 
 def readBookNumAndTitle(number,title):
+    """
+        Uses espeak program to read out loud the number and title of book.
+    """
     systemString = "espeak 'book {}. {}.' -v en-us -s 175 -g 10".format(number,title)
     os.system(systemString)
 
 def rewind(fractional,player,currentBookTitle):
+    """
+        Method when rewind button is pressed. Each chapter is divided into "fractionals." If fractional value
+        is 0.5, then that chapter is 50% finished. If fractional is more than .01, player will rewind within
+        chapter. If fractional is less than .01, player will go to end (.99) of previous chapter.
+    """
     if fractional > .01:
         fractional = fractional -.01
         updateMetaFile(currentBookTitle,fractional,'other')
@@ -159,6 +187,11 @@ def rewind(fractional,player,currentBookTitle):
         updateMetaFile(currentBookTitle,fractional,'rewind')
 
 def fastForward(fractional,player,currentBookTitle):
+    """
+        Method when fast forward button is pressed. Each chapter is divided into "fractionals." Behaves 
+        similar to rewind, except that if fast-forwarded in final .01 of chapter, player skips to 0 of next
+        chapter.
+    """
     if fractional < .99:
         fractional = fractional +.01
         updateMetaFile(currentBookTitle,fractional,'other')
@@ -170,25 +203,41 @@ def fastForward(fractional,player,currentBookTitle):
         
 
 def sanitize(pinNum):
+    """
+        Method prevents multiple button presses. Each time button is pressed, sanitizer pauses for .1 sec.
+        IE input of 1111101010111001000010000 will be sanitized to 1.
+    """
     while GPIO.input(pinNum):
         time.sleep(.1)
     
 def closePlayer(player):
+    """
+        Stops player
+    """
     player.stop()
 
 def closeAndPlay(player,currentBookTitle,typeVar):
+    """
+        Calls method to stop player. Then starts playing. This method stops old player and starts new one.
+    """
     closePlayer(player)
     readMP3(currentBookTitle,typeVar)
 
 def powerOff(currentBookTitle,fractional):
+    """
+        stops player, updates meta file for next time you turn on player. cleans up GPIO board
+    """
     global player
     player.stop()
     updateMetaFile(currentBookTitle,fractional,True)
     GPIO.cleanup()
-    
-    # power down line
+
     
 def mainloop():
+    """
+        Infinite main loop runs until Raspberry Pi is powered off by pressing power button. This method
+        waits for input from each button, then calls the appropriate function based on button pressed.
+    """
     global playing
     global player
     currentBook = 0
@@ -205,7 +254,6 @@ def mainloop():
             try:
                 readMP3(bookList[currentBook],'none')
             except:
-                print(bookList,currentBook)
                 GPIO.output(40,0)
             initial = False
         elif initial and GPIO.input(35):
@@ -269,5 +317,4 @@ def mainloop():
             powerOff(bookList[currentBook],player.get_position())
             os.system('poweroff')
 
-#time.sleep(15)
 mainloop()
