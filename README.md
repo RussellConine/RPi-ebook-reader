@@ -1,5 +1,4 @@
 # RPi-ebook-reader
-# RPi-ebook-reader
 
 #### Raspberry Pi Ebook Reader, 07.13.2018
 ### By Russell Conine
@@ -29,7 +28,8 @@ https://www.youtube.com/watch?v=-3UGP_aCNcs
 
 ## Technologies Used
 
-Python, eSpeak for Raspberry Pi
+Python
+eSpeak for Raspberry Pi
 
 
 
